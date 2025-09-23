@@ -20,10 +20,10 @@ import LeaveRequestList from "./components/leave/LeaveRequestList";
 import Attendence from "./pages/Attendence";
 import Profile from "./pages/Profile";
 import Department from "./pages/Department";
-import Payroll from "./pages/payroll";
+import Payroll from "./pages/Payroll";
 import Performance from "./pages/Performance";
 import Reports from "./pages/Reports";
-import Payslips from "./pages/payslips";
+import Payslips from "./pages/Payslips";
 import AttendanceList from "./pages/AttendanceList";
 import { useEffect } from "react";
 
