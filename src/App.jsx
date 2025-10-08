@@ -17,7 +17,7 @@ import EmployeeDashboard from "./components/dashboard/EmployeeDashboard";
 import EmployeeList from "./components/employees/EmployeeList";
 import EmployeeForm from "./components/employees/EmployeeForm";
 import LeaveRequestList from "./components/leave/LeaveRequestList";
-import Attendence from "./pages/Attendence";
+import Attendance from "./pages/Attendance";
 import Profile from "./pages/Profile";
 import Department from "./pages/Department";
 import Payroll from "./pages/Payroll";
@@ -61,20 +61,7 @@ const MainLayout = ({ children }) => (
 );
 
 function App() {
-  // useEffect(() => {
-  //   fetch('http://localhost:8083/api/employees')
-  //     .then(async (res) => {
-  //       if (!res.ok) {
-  //         throw new Error(`Backend returned status ${res.status}`);
-  //       }
-
-  //       // Read as text first
-  //       const text = await res.text();
-  //       return text ? JSON.parse(text) : null;  // only parse JSON if not empty
-  //     })
-  //     .then(data => console.log('Backend data:', data))
-  //     .catch(err => console.error('Backend error:', err));
-  // }, []);
+ 
 
   return (
     <AuthProvider>
@@ -185,7 +172,7 @@ function App() {
               element={
                 <PrivateRoute>
                   <MainLayout>
-                    <Attendence />
+                    <Attendance />
                   </MainLayout>
                 </PrivateRoute>
               }

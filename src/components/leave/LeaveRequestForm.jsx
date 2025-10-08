@@ -23,7 +23,7 @@ const LeaveRequestForm = ({ onClose }) => {
       differenceInDays(new Date(formData.endDate), new Date(formData.startDate)) + 1;
 
     const leaveRequest = {
-      id: Date.now().toString(),
+      // id: Date.now().toString(),
       employeeId: user.id,
       type: formData.type,
       startDate: formData.startDate,

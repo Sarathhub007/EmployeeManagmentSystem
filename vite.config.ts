@@ -6,5 +6,5 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
-  base: '/ems/',  // ✅ trailing slash is crucial
+  base: './',  
 });

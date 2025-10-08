@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await authAPI.login({ email, password });
       const { token, id, username, email: userEmail, roles } = res.data;
-
+      console.log(email);
       const user = {
         id,
         username,
@@ -109,7 +109,6 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     dispatch({ type: "LOGOUT" });
-    
   };
 
   return (
@@ -118,7 +117,7 @@ export const AuthProvider = ({ children }) => {
         ...state,
         login,
         logout,
-        register, 
+        register,
       }}
     >
       {children}

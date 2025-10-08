@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import {
@@ -11,6 +12,7 @@ import {
 const EmployeeDashboard = () => {
   const { user } = useAuth();
   const { leaveRequests } = useApp();
+  const navigate = useNavigate();
   
   const userLeaveRequests = leaveRequests.filter(req => req.employeeId === user?.id);
 
@@ -81,15 +83,23 @@ const EmployeeDashboard = () => {
         <div className="px-4 py-5 sm:p-6">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Quick Actions</h3>
           <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <button className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <button
+              className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
               <ClockIcon className="h-5 w-5 mr-2 text-gray-400" />
               Clock In/Out
             </button>
-            <button className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <button
+              className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              onClick={() => navigate('/employee/leave-requests')}
+            >
               <CalendarDaysIcon className="h-5 w-5 mr-2 text-gray-400" />
               Request Leave
             </button>
-            <button className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <button
+              className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              onClick={() => navigate('/employee/payslips')}
+            >
               <CurrencyDollarIcon className="h-5 w-5 mr-2 text-gray-400" />
               View Payslips
             </button>
