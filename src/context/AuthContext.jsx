@@ -68,11 +68,24 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: "LOGIN_START" });
     try {
       const res = await authAPI.login({ email, password });
-      const { token, id, username, email: userEmail, roles } = res.data;
-      console.log(email);
+      console.log("Full API Response:", res.data);
+      
+      const {
+        token,
+        id,
+        firstName,    // Note: Changed from first_name
+        lastName,     // Note: Changed from last_name
+        email: userEmail,
+        roles,
+      } = res.data;
+
+      console.log("First Name:", firstName);
+      console.log("Last Name:", lastName);
+
       const user = {
         id,
-        username,
+        first_name: firstName,  // Map to frontend naming convention
+        last_name: lastName,    // Map to frontend naming convention
         email: userEmail,
         role: roles.includes("ROLE_ADMIN") ? "admin" : "employee",
       };
@@ -91,7 +104,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Register function (optional auto-login)
+  // Register function
   const register = async (username, email, password) => {
     try {
       await authAPI.register({ username, email, password });

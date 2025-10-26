@@ -75,8 +75,10 @@ export const performanceAPI = {
   create: (review) => api.post("/performance-reviews", review),
 };
 
+// services/api.js — update departmentAPI
+// ✅ FIXED departmentAPI - remove /summary from getAll()
 export const departmentAPI = {
-  getAll: () => api.get("/departments"),
+  getAll: () => api.get("/departments"),  // Changed from /departments/summary
   getById: (id) => api.get(`/departments/${id}`),
   create: (department) => api.post("/departments", department),
   update: (id, department) => api.put(`/departments/${id}`, department),

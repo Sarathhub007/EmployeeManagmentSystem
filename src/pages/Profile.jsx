@@ -1,5 +1,5 @@
-import React from 'react';
-import { useAuth } from '../context/AuthContext';
+import React from "react";
+import { useAuth } from "../context/AuthContext";
 
 function Profile() {
   const { user } = useAuth();
@@ -14,7 +14,9 @@ function Profile() {
       <div className="space-y-4">
         <div>
           <span className="font-medium text-gray-700">Name:</span>
-          <span className="ml-2 text-gray-900">{user.firstName} {user.lastName}</span>
+          <span className="ml-2 text-gray-900">
+            {user.first_name} {user.last_name}
+          </span>
         </div>
         <div>
           <span className="font-medium text-gray-700">Email:</span>
@@ -31,3 +33,4 @@ function Profile() {
 }
 
 export default Profile;
+  

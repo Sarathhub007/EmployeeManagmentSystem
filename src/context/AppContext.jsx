@@ -1,33 +1,37 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { employeeAPI, leaveAPI, dashboardAPI, performanceAPI, attendanceAPI } from '../services/api';
+import { 
+  employeeAPI, 
+  leaveAPI, 
+  dashboardAPI, 
+  performanceAPI, 
+  attendanceAPI,
+  departmentAPI  // ✅ ADD THIS IMPORT
+} from '../services/api';
 
 const initialState = {
   employees: [],
-  departments: [
-    {
-      id: '1',
-      name: 'Engineering',
-      description: 'Software development and technical operations',
-      managerId: '2',
-      employeeCount: 15,
-    },
-    {
-      id: '2',
-      name: 'Marketing', 
-      description: 'Brand management and customer acquisition',
-      managerId: '3',
-      employeeCount: 8,
-    },
-  ],
+  departments: [],
   leaveRequests: [],
   dashboardStats: null,
-  performanceReviews: [], // ✅ added for performance
+  performanceReviews: [],
   loading: false,
   error: null,
 };
 
 const appReducer = (state, action) => {
   switch (action.type) {
+    case 'SET_DEPARTMENTS':
+      return { ...state, departments: action.payload, loading: false };
+    case 'ADD_DEPARTMENT':
+      return { ...state, departments: [...state.departments, action.payload] };
+    case 'UPDATE_DEPARTMENT':
+      return {
+        ...state,
+        departments: state.departments.map(d => d.id === action.payload.id ? action.payload : d)
+      };
+    case 'DELETE_DEPARTMENT':
+      return { ...state, departments: state.departments.filter(d => d.id !== action.payload) };
+    
     case 'SET_LOADING':
       return { ...state, loading: action.payload };
     case 'SET_ERROR':
@@ -61,9 +65,9 @@ const appReducer = (state, action) => {
       };
     case 'SET_DASHBOARD_STATS':
       return { ...state, dashboardStats: action.payload };
-    case 'SET_PERFORMANCE_REVIEWS': // ✅ added
+    case 'SET_PERFORMANCE_REVIEWS':
       return { ...state, performanceReviews: action.payload };
-    case 'ADD_PERFORMANCE_REVIEW': // ✅ optional if adding new review
+    case 'ADD_PERFORMANCE_REVIEW':
       return { ...state, performanceReviews: [...state.performanceReviews, action.payload] };
     default:
       return state;
@@ -83,12 +87,13 @@ export const useApp = () => {
 export const AppProvider = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  // Load initial data
+  // ✅ Load initial data - ADD loadDepartments here
   useEffect(() => {
     loadEmployees();
     loadLeaveRequests();
     loadDashboardStats();
-    loadPerformanceReviews(); // ✅ load performance reviews
+    loadPerformanceReviews();
+    loadDepartments(); // ✅ ADD THIS LINE
   }, []);
 
   // Employee functions
@@ -98,6 +103,7 @@ export const AppProvider = ({ children }) => {
       const response = await employeeAPI.getAll();
       dispatch({ type: 'SET_EMPLOYEES', payload: response.data });
     } catch (error) {
+      console.error('Failed to load employees:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Failed to load employees' });
     }
   };
@@ -209,7 +215,7 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // ✅ Performance functions
+  // Performance functions
   const loadPerformanceReviews = async () => {
     try {
       const response = await performanceAPI.getAll();
@@ -230,51 +236,51 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  //department
-  // Department functions in context
-const loadDepartments = async () => {
-  dispatch({ type: "SET_LOADING", payload: true });
-  try {
-    const response = await departmentAPI.getAll(); // fetch from backend
-    dispatch({ type: "SET_DEPARTMENTS", payload: response.data });
-  } catch (error) {
-    dispatch({ type: "SET_ERROR", payload: "Failed to load departments" });
-  }
-};
+  // ✅ Department functions
+  const loadDepartments = async () => {
+    dispatch({ type: "SET_LOADING", payload: true });
+    try {
+      const response = await departmentAPI.getAll();
+      console.log("Departments loaded:", response.data); // Debug log
+      dispatch({ type: "SET_DEPARTMENTS", payload: response.data });
+    } catch (error) {
+      console.error("Failed to load departments:", error);
+      dispatch({ type: "SET_ERROR", payload: "Failed to load departments" });
+    }
+  };
 
-const addDepartment = async (department) => {
-  try {
-    const response = await departmentAPI.create(department);
-    dispatch({ type: "ADD_DEPARTMENT", payload: response.data });
-    return { success: true };
-  } catch (error) {
-    dispatch({ type: "SET_ERROR", payload: "Failed to add department" });
-    return { success: false, error: error.response?.data };
-  }
-};
+  const addDepartment = async (department) => {
+    try {
+      const response = await departmentAPI.create(department);
+      dispatch({ type: "ADD_DEPARTMENT", payload: response.data });
+      return { success: true };
+    } catch (error) {
+      dispatch({ type: "SET_ERROR", payload: "Failed to add department" });
+      return { success: false, error: error.response?.data };
+    }
+  };
 
-const updateDepartment = async (department) => {
-  try {
-    const response = await departmentAPI.update(department.id, department);
-    dispatch({ type: "UPDATE_DEPARTMENT", payload: response.data });
-    return { success: true };
-  } catch (error) {
-    dispatch({ type: "SET_ERROR", payload: "Failed to update department" });
-    return { success: false, error: error.response?.data };
-  }
-};
+  const updateDepartment = async (department) => {
+    try {
+      const response = await departmentAPI.update(department.id, department);
+      dispatch({ type: "UPDATE_DEPARTMENT", payload: response.data });
+      return { success: true };
+    } catch (error) {
+      dispatch({ type: "SET_ERROR", payload: "Failed to update department" });
+      return { success: false, error: error.response?.data };
+    }
+  };
 
-const deleteDepartment = async (id) => {
-  try {
-    await departmentAPI.delete(id);
-    dispatch({ type: "DELETE_DEPARTMENT", payload: id });
-    return { success: true };
-  } catch (error) {
-    dispatch({ type: "SET_ERROR", payload: "Failed to delete department" });
-    return { success: false, error: error.response?.data };
-  }
-};
-
+  const deleteDepartment = async (id) => {
+    try {
+      await departmentAPI.delete(id);
+      dispatch({ type: "DELETE_DEPARTMENT", payload: id });
+      return { success: true };
+    } catch (error) {
+      dispatch({ type: "SET_ERROR", payload: "Failed to delete department" });
+      return { success: false, error: error.response?.data };
+    }
+  };
 
   const value = {
     ...state,
@@ -289,12 +295,12 @@ const deleteDepartment = async (id) => {
     loadLeaveRequests,
     loadDashboardStats,
     addCheckIn,
-    loadPerformanceReviews,   // ✅ expose to components
+    loadPerformanceReviews,
     addPerformanceReview,
-     loadDepartments,
-  addDepartment,
-  updateDepartment,
-  deleteDepartment,     
+    loadDepartments,
+    addDepartment,
+    updateDepartment,
+    deleteDepartment,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

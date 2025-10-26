@@ -116,7 +116,7 @@ const Register = () => {
           className="w-full p-2 border rounded"
         />
 
-        <select
+        {/* <select
           name="department_id"
           value={form.department_id}
           onChange={handleChange}
@@ -129,7 +129,7 @@ const Register = () => {
               {d.name}
             </option>
           ))}
-        </select>
+        </select> */}
 
         <input
           type="text"
@@ -155,7 +155,7 @@ const Register = () => {
           className="w-full p-2 border rounded"
         />
 
-        <select
+        {/* <select
           name="manager_id"
           value={form.manager_id}
           onChange={handleChange}
@@ -167,7 +167,7 @@ const Register = () => {
               {e.first_name} {e.last_name}
             </option>
           ))}
-        </select>
+        </select> */}
 
         <select
           name="role"
