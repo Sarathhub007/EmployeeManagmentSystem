@@ -3,7 +3,8 @@ import React, { createContext, useContext, useReducer, useEffect } from "react";
 import { authAPI } from "../services/api";
 
 const initialState = {
-  user: null,
+  user: null, // For routing & auth
+  employee: null, // For EMS modules (attendance, payroll, performance)
   token: null,
   isLoading: true,
   isAuthenticated: false,
@@ -13,20 +14,23 @@ const authReducer = (state, action) => {
   switch (action.type) {
     case "LOGIN_START":
       return { ...state, isLoading: true };
+
     case "LOGIN_SUCCESS":
       return {
         ...state,
         user: action.payload.user,
+        employee: action.payload.employee,
         token: action.payload.token,
         isLoading: false,
         isAuthenticated: true,
       };
+
     case "LOGIN_FAILURE":
       return { ...initialState, isLoading: false };
+
     case "LOGOUT":
       return { ...initialState, isLoading: false };
-    case "SET_LOADING":
-      return { ...state, isLoading: action.payload };
+
     default:
       return state;
   }
@@ -43,58 +47,77 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Load token + user on refresh
+  // ✅ Load saved session on refresh
   useEffect(() => {
     const token = localStorage.getItem("token");
     const user = localStorage.getItem("user");
+    const employee = localStorage.getItem("employee");
+
     if (token && user) {
-      try {
-        dispatch({
-          type: "LOGIN_SUCCESS",
-          payload: { token, user: JSON.parse(user) },
-        });
-      } catch {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        dispatch({ type: "LOGIN_FAILURE" });
-      }
+      dispatch({
+        type: "LOGIN_SUCCESS",
+        payload: {
+          token,
+          user: JSON.parse(user),
+          employee: employee ? JSON.parse(employee) : null,
+        },
+      });
     } else {
-      dispatch({ type: "SET_LOADING", payload: false });
+      dispatch({ type: "LOGIN_FAILURE" });
     }
   }, []);
 
-  // Login function
+  // ✅ LOGIN FUNCTION — corrected mapping
   const login = async (email, password) => {
     dispatch({ type: "LOGIN_START" });
     try {
       const res = await authAPI.login({ email, password });
-      console.log("Full API Response:", res.data);
-      
+
       const {
         token,
-        id,
-        firstName,    // Note: Changed from first_name
-        lastName,     // Note: Changed from last_name
+        id: employeeId, // employeeId from backend
+        firstName,
+        lastName,
         email: userEmail,
         roles,
       } = res.data;
 
-      console.log("First Name:", firstName);
-      console.log("Last Name:", lastName);
-
+      // Data used for routing & permissions
       const user = {
-        id,
-        first_name: firstName,  // Map to frontend naming convention
-        last_name: lastName,    // Map to frontend naming convention
         email: userEmail,
+        firstName,
+        lastName,
         role: roles.includes("ROLE_ADMIN") ? "admin" : "employee",
       };
 
+      // Data used for EMS modules (Pay, Attendance, etc.)
+      const employee = {
+        id: employeeId, // ✅ correct ID for payroll/attendance API
+        firstName,
+        lastName,
+        email: userEmail,
+      };
+
+      // Save to storage
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("employee", JSON.stringify(employee));
 
-      dispatch({ type: "LOGIN_SUCCESS", payload: { token, user } });
-      return { success: true, user };
+      dispatch({
+        type: "LOGIN_SUCCESS",
+        payload: { token, user, employee },
+      });
+
+      // Notify other parts of the app (AppProvider) that auth is available now
+      try {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("auth:login"));
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      return { success: true, user, employee };
     } catch (err) {
       dispatch({ type: "LOGIN_FAILURE" });
       return {
@@ -104,23 +127,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Register function
-  const register = async (username, email, password) => {
-    try {
-      await authAPI.register({ username, email, password });
-      return { success: true };
-    } catch (err) {
-      return {
-        success: false,
-        message: err.response?.data?.message || "Registration failed",
-      };
-    }
-  };
-
-  // Logout
+  // ✅ LOGOUT
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("employee");
     dispatch({ type: "LOGOUT" });
   };
 
@@ -130,7 +141,6 @@ export const AuthProvider = ({ children }) => {
         ...state,
         login,
         logout,
-        register,
       }}
     >
       {children}

@@ -46,13 +46,12 @@ const Sidebar = () => {
     },
     { name: "Payroll", icon: CurrencyDollarIcon, path: "/admin/payroll" },
     { name: "Performance", icon: ChartBarIcon, path: "/admin/performance" },
-    { name: "Reports", icon: DocumentTextIcon, path: "/admin/report" },
-    { name: "My Profile", icon: UsersIcon, path: "/profile" },
+    // { name: "My Profile", icon: UsersIcon, path: "/profile" },
   ];
 
   const employeeNavigation = [
     { name: "Dashboard", icon: HomeIcon, path: "/employee/dashboard" },
-    { name: "My Profile", icon: UsersIcon, path: "/profile" },
+    // { name: "My Profile", icon: UsersIcon, path: "/profile" },
     { name: "Attendance", icon: ClockIcon, path: "/attendance" },
     {
       name: "Leave Requests",
@@ -67,19 +66,22 @@ const Sidebar = () => {
     user?.role === "admin" ? adminNavigation : employeeNavigation;
 
   const isActive = (path) => location.pathname === path;
+
 const SidebarContent = () => (
   <div className="flex flex-col h-full">
-    <div className="space-y-1 px-3 py-2">
+    <div className="space-y-1 px-2 py-3">
+
       {navigation.map((item) => {
         const active = isActive(item.path);
+
         return (
           <Link
             key={item.name}
             to={item.path}
-            onClick={() => setOpen(false)} // <-- Close sidebar on click
+            onClick={() => setOpen(false)}
             className={`
-              group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium
-              transition-all duration-200 ease-in-out
+              flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium
+              transition-all duration-200
               ${
                 active
                   ? "bg-primary text-primary-foreground shadow-sm"
@@ -88,15 +90,16 @@ const SidebarContent = () => (
             `}
           >
             <item.icon
-              className={`h-5 w-5 flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${
-                active ? "text-primary-foreground" : "text-muted-foreground"
-              }`}
-              aria-hidden="true"
+              className={`
+                h-5 w-5 flex-shrink-0 transition-transform duration-200
+                ${active ? "text-primary-foreground" : "text-muted-foreground"}
+              `}
             />
-            <span className="flex-1">{item.name}</span>
+            <span className="flex-1 truncate">{item.name}</span>
           </Link>
         );
       })}
+
     </div>
   </div>
 );

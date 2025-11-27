@@ -1,69 +1,81 @@
-import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useApp } from '../../context/AppContext';
-import { XMarkIcon } from '@heroicons/react/24/outline';
-import { differenceInDays } from 'date-fns';
+import React, { useState, useMemo } from "react";
+import { useAuth } from "../../context/AuthContext";
+import { useApp } from "../../context/AppContext";
+import { XMarkIcon } from "@heroicons/react/24/outline";
+import { differenceInDays } from "date-fns";
 
 const LeaveRequestForm = ({ onClose }) => {
   const { user } = useAuth();
   const { addLeaveRequest } = useApp();
 
   const [formData, setFormData] = useState({
-    type: 'vacation',
-    startDate: '',
-    endDate: '',
-    reason: '',
+    type: "vacation",
+    startDate: "",
+    endDate: "",
+    reason: "",
   });
+
+  // preview calculated days
+  const totalDays = useMemo(() => {
+    if (!formData.startDate || !formData.endDate) return 0;
+    const diff =
+      differenceInDays(
+        new Date(formData.endDate),
+        new Date(formData.startDate)
+      ) + 1;
+    return diff > 0 ? diff : 0;
+  }, [formData.startDate, formData.endDate]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!user) return;
-
-    const days =
-      differenceInDays(new Date(formData.endDate), new Date(formData.startDate)) + 1;
+    if (!user || totalDays <= 0) return;
 
     const leaveRequest = {
-      // id: Date.now().toString(),
       employeeId: user.id,
       type: formData.type,
       startDate: formData.startDate,
       endDate: formData.endDate,
-      days,
+      days: totalDays,
       reason: formData.reason,
-      status: 'pending',
-      appliedOn: new Date().toISOString().split('T')[0],
+      status: "pending",
+      appliedOn: new Date().toISOString().split("T")[0],
     };
 
     addLeaveRequest(leaveRequest);
     onClose();
   };
 
-  const handleChange = (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
-  };
-
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-medium text-gray-900">Request Leave</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <XMarkIcon className="h-6 w-6" />
+    <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50 p-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6 animate-in fade-in zoom-in duration-150">
+
+        {/* Header */}
+        <div className="flex items-center justify-between border-b pb-3 mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Request Leave</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition"
+          >
+            <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+
+          {/* Leave Type */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Leave Type</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Leave Type
+            </label>
             <select
               name="type"
               required
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
               value={formData.type}
-              onChange={handleChange}
+              onChange={(e) =>
+                setFormData({ ...formData, type: e.target.value })
+              }
             >
               <option value="vacation">Vacation</option>
               <option value="sick">Sick Leave</option>
@@ -73,54 +85,81 @@ const LeaveRequestForm = ({ onClose }) => {
             </select>
           </div>
 
+          {/* Start Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Start Date</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Start Date
+            </label>
             <input
               type="date"
               name="startDate"
               required
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              min={new Date().toISOString().split("T")[0]}
+              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
               value={formData.startDate}
-              onChange={handleChange}
+              onChange={(e) =>
+                setFormData({ ...formData, startDate: e.target.value })
+              }
             />
           </div>
 
+          {/* End Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">End Date</label>
+            <label className="block text-sm font-medium text-gray-700">
+              End Date
+            </label>
             <input
               type="date"
               name="endDate"
               required
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              min={formData.startDate}
+              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
               value={formData.endDate}
-              onChange={handleChange}
+              onChange={(e) =>
+                setFormData({ ...formData, endDate: e.target.value })
+              }
             />
           </div>
 
+          {/* Days Preview */}
+          {totalDays > 0 && (
+            <p className="text-sm text-gray-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+              Total Days: <span className="font-semibold">{totalDays}</span>
+            </p>
+          )}
+
+          {/* Reason */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Reason</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Reason
+            </label>
             <textarea
               name="reason"
               required
               rows="3"
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Provide a clear reason..."
+              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
               value={formData.reason}
-              onChange={handleChange}
-              placeholder="Please provide a reason for your leave request..."
+              onChange={(e) =>
+                setFormData({ ...formData, reason: e.target.value })
+              }
             />
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
+          {/* Buttons */}
+          <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 rounded-lg border text-gray-700 hover:bg-gray-50"
             >
               Cancel
             </button>
+
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700"
+              disabled={totalDays <= 0}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300"
             >
               Submit Request
             </button>

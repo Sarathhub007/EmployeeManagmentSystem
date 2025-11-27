@@ -1,11 +1,12 @@
-import React, { useEffect } from 'react';
-import { useApp } from '../../context/AppContext';
+import React, { useEffect } from "react";
+import { useApp } from "../../context/AppContext";
 import {
   UsersIcon,
   ClockIcon,
   CurrencyDollarIcon,
   DocumentTextIcon,
-} from '@heroicons/react/24/outline';
+} from "@heroicons/react/24/outline";
+
 import {
   BarChart,
   Bar,
@@ -17,199 +18,229 @@ import {
   PieChart,
   Pie,
   Cell,
-} from 'recharts';
+} from "recharts";
 
 const AdminDashboard = () => {
-  const { employees, departments, leaveRequests, dashboardStats, loadDashboardStats } = useApp();
+  const {
+    employees,
+    departments,
+    leaveRequests,
+    dashboardStats,
+    loadDashboardStats,
+  } = useApp();
 
   useEffect(() => {
-    loadDashboardStats();
-  }, []);
+    if (!dashboardStats) loadDashboardStats();
+  }, [dashboardStats, loadDashboardStats]);
 
-  const stats = dashboardStats ? [
+  // Safe arrays
+  const safeDepartments = Array.isArray(departments) ? departments : [];
+  const safeLeaveRequests = Array.isArray(leaveRequests) ? leaveRequests : [];
+
+  const stats = [
     {
-      name: 'Total Employees',
-      stat: dashboardStats.totalEmployees?.toString() || '0',
+      name: "Total Employees",
+      stat:
+        dashboardStats?.totalEmployees ??
+        employees?.length ??
+        0,
       icon: UsersIcon,
-      change: '+12%',
-      changeType: 'increase',
+      change: "+12%",
+      changeType: "increase",
     },
     {
-      name: 'Present Today',
-      stat: dashboardStats.presentToday?.toString() || '0',
+      name: "Present Today",
+      stat: dashboardStats?.presentToday ?? 0,
       icon: ClockIcon,
-      change: '+2.1%',
-      changeType: 'increase',
+      change: "+2.1%",
+      changeType: "increase",
     },
     {
-      name: 'Pending Leaves',
-      stat: dashboardStats.pendingLeaves?.toString() || '0',
+      name: "Pending Leaves",
+      stat:
+        dashboardStats?.pendingLeaves ??
+        safeLeaveRequests.filter((r) => r.status?.toLowerCase() === "pending")
+          .length,
       icon: DocumentTextIcon,
-      change: '-4.2%',
-      changeType: 'decrease',
+      change: "-4.2%",
+      changeType: "decrease",
     },
     {
-      name: 'Monthly Payroll',
-      stat: dashboardStats.monthlyPayroll || '$0',
+      name: "Monthly Payroll",
+      stat:
+        dashboardStats?.monthlyPayroll ??
+        dashboardStats?.monthlyPayrollAmount ??
+        "$0",
       icon: CurrencyDollarIcon,
-      change: '+8.1%',
-      changeType: 'increase',
+      change: "+8.1%",
+      changeType: "increase",
     },
-  ] : [];
+  ];
 
-  const departmentData = departments.map((dept) => ({
-    name: dept.name,
-    employees: dept.employeeCount,
+  // Department employees
+  const departmentData = safeDepartments.map((d) => ({
+    name: d?.name || "Unknown",
+    employees: d?.employeeCount ?? d?.employee_count ?? 0,
   }));
 
+  // Leave pie chart
   const leaveData = [
-    { 
-      name: 'Approved', 
-      value: leaveRequests.filter(req => req.status === 'approved').length,
-      color: '#10B981' 
+    {
+      name: "Approved",
+      value: safeLeaveRequests.filter((req) => req.status?.toLowerCase() === "approved").length,
+      color: "#10B981",
     },
-    { 
-      name: 'Pending', 
-      value: leaveRequests.filter(req => req.status === 'pending').length,
-      color: '#F59E0B' 
+    {
+      name: "Pending",
+      value: safeLeaveRequests.filter((req) => req.status?.toLowerCase() === "pending").length,
+      color: "#F59E0B",
     },
-    { 
-      name: 'Rejected', 
-      value: leaveRequests.filter(req => req.status === 'rejected').length,
-      color: '#EF4444' 
+    {
+      name: "Rejected",
+      value: safeLeaveRequests.filter((req) => req.status?.toLowerCase() === "rejected").length,
+      color: "#EF4444",
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
+
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Welcome back! Here's what's happening at your organization.
+        <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+        <p className="text-gray-600 mt-1">
+          Overview of your organization's activity and insights.
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      {/* ====================== Stats ======================= */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((item) => (
           <div
             key={item.name}
-            className="relative bg-white pt-5 px-4 pb-4 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden"
+            className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all"
           >
-            <div>
-              <div className="absolute bg-blue-500 rounded-md p-3">
-                <item.icon className="h-6 w-6 text-white" aria-hidden="true" />
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-600 rounded-xl shadow">
+                <item.icon className="h-6 w-6 text-white" />
               </div>
-              <p className="ml-16 text-sm font-medium text-gray-500 truncate">
-                {item.name}
-              </p>
+
+              <div>
+                <p className="text-gray-500 text-sm">{item.name}</p>
+                <p className="text-2xl font-bold text-gray-900 mt-0.5">
+                  {item.stat}
+                </p>
+              </div>
             </div>
-            <div className="ml-16 flex items-baseline">
-              <p className="text-2xl font-semibold text-gray-900">{item.stat}</p>
-              <p
-                className={`ml-2 flex items-baseline text-sm font-semibold ${
-                  item.changeType === 'increase' ? 'text-green-600' : 'text-red-600'
-                }`}
-              >
-                {item.change}
-              </p>
+
+            <div
+              className={`mt-3 text-sm font-semibold ${
+                item.changeType === "increase"
+                  ? "text-green-600"
+                  : "text-red-600"
+              }`}
+            >
+              {item.change}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
+      {/* ====================== Charts ======================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+        {/* Bar Chart */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Employees by Department
           </h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={departmentData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="name" stroke="#6b7280" />
+              <YAxis stroke="#6b7280" />
               <Tooltip />
-              <Bar dataKey="employees" fill="#3B82F6" />
+              <Bar dataKey="employees" fill="#3B82F6" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
+        {/* Pie Chart */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Leave Requests Status
           </h3>
+
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
                 data={leaveData}
                 cx="50%"
                 cy="50%"
-                labelLine={false}
-                label={({ name, percent }) =>
-                  `${name} ${(percent * 100).toFixed(0)}%`
-                }
-                outerRadius={80}
-                fill="#8884d8"
+                outerRadius={100}
                 dataKey="value"
+                labelLine={false}
+                paddingAngle={3}
+                label={({ name, percent }) =>
+                  percent > 0 ? `${name} ${(percent * 100).toFixed(0)}%` : ""
+                }
               >
                 {leaveData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
+                  <Cell key={index} fill={entry.color} />
                 ))}
               </Pie>
+
               <Tooltip />
             </PieChart>
           </ResponsiveContainer>
-        </div>
-      </div>
 
-      {/* Recent Activity */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">
-            Recent Activity
-          </h3>
-          <div className="mt-5">
-            <div className="flow-root">
-              <ul className="-mb-8">
-                {employees.slice(0, 3).map((employee, idx) => (
-                  <li key={employee.id}>
-                    <div className="relative pb-8">
-                      {idx !== 2 && (
-                        <span
-                          className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
-                          aria-hidden="true"
-                        />
-                      )}
-                      <div className="relative flex space-x-3">
-                        <div>
-                          <span className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
-                            <UsersIcon className="h-4 w-4 text-white" aria-hidden="true" />
-                          </span>
-                        </div>
-                        <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                          <div>
-                            <p className="text-sm text-gray-500">
-                              Employee{' '}
-                              <span className="font-medium text-gray-900">
-                                {employee.firstName} {employee.lastName}
-                              </span>{' '}
-                              in {employee.department || 'department'}
-                            </p>
-                          </div>
-                          <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                            <time dateTime={employee.hireDate}>Recent</time>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          <div className="text-center text-gray-600 mt-2">
+            Total:{" "}
+            {leaveData.reduce((sum, item) => sum + item.value, 0)}
           </div>
         </div>
       </div>
+
+      {/* ==================== Recent Activity ==================== */}
+      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+        <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
+
+        <ul className="mt-6 space-y-8">
+          {employees.slice(0, 3).map((e, index) => (
+            <li key={e.id} className="relative flex items-start gap-4">
+
+              {/* Timeline line */}
+              {index < 2 && (
+                <span className="absolute left-4 top-10 bottom-0 w-0.5 bg-gray-200"></span>
+              )}
+
+              {/* Icon */}
+              <span className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center shadow">
+                <UsersIcon className="h-5 w-5 text-white" />
+              </span>
+
+              {/* Info */}
+              <div>
+                <p className="text-gray-700">
+                  Employee{" "}
+                  <span className="font-semibold">
+                    {e.firstName} {e.lastName}
+                  </span>{" "}
+                  joined the{" "}
+                  <span className="font-medium">
+                    {e.department?.name || "department"}
+                  </span>
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {e.hireDate || "Recently"}
+                </p>
+              </div>
+
+            </li>
+          ))}
+        </ul>
+      </div>
+
     </div>
   );
 };

@@ -1,12 +1,13 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { 
-  employeeAPI, 
-  leaveAPI, 
-  dashboardAPI, 
-  performanceAPI, 
+// src/context/AppContext.jsx
+import React, { createContext, useContext, useReducer, useEffect } from "react";
+import {
+  employeeAPI,
+  leaveAPI,
+  dashboardAPI,
+  performanceAPI,
   attendanceAPI,
-  departmentAPI  // ✅ ADD THIS IMPORT
-} from '../services/api';
+  departmentAPI,
+} from "../services/api";
 
 const initialState = {
   employees: [],
@@ -18,146 +19,294 @@ const initialState = {
   error: null,
 };
 
+const AppContext = createContext();
+
 const appReducer = (state, action) => {
   switch (action.type) {
-    case 'SET_DEPARTMENTS':
+    case "SET_DEPARTMENTS":
       return { ...state, departments: action.payload, loading: false };
-    case 'ADD_DEPARTMENT':
+    case "ADD_DEPARTMENT":
       return { ...state, departments: [...state.departments, action.payload] };
-    case 'UPDATE_DEPARTMENT':
+    case "UPDATE_DEPARTMENT":
       return {
         ...state,
-        departments: state.departments.map(d => d.id === action.payload.id ? action.payload : d)
+        departments: state.departments.map((d) =>
+          d.id === action.payload.id ? action.payload : d
+        ),
       };
-    case 'DELETE_DEPARTMENT':
-      return { ...state, departments: state.departments.filter(d => d.id !== action.payload) };
-    
-    case 'SET_LOADING':
-      return { ...state, loading: action.payload };
-    case 'SET_ERROR':
-      return { ...state, error: action.payload, loading: false };
-    case 'SET_EMPLOYEES':
-      return { ...state, employees: action.payload, loading: false };
-    case 'ADD_EMPLOYEE':
-      return { ...state, employees: [...state.employees, action.payload] };
-    case 'UPDATE_EMPLOYEE':
+    case "DELETE_DEPARTMENT":
       return {
         ...state,
-        employees: state.employees.map(emp =>
+        departments: state.departments.filter((d) => d.id !== action.payload),
+      };
+
+    case "SET_LOADING":
+      return { ...state, loading: action.payload };
+    case "SET_ERROR":
+      return { ...state, error: action.payload, loading: false };
+
+    case "SET_EMPLOYEES":
+      return { ...state, employees: action.payload, loading: false };
+    case "ADD_EMPLOYEE":
+      return { ...state, employees: [...state.employees, action.payload] };
+    case "UPDATE_EMPLOYEE":
+      return {
+        ...state,
+        employees: state.employees.map((emp) =>
           emp.id === action.payload.id ? action.payload : emp
         ),
       };
-    case 'DELETE_EMPLOYEE':
+    case "DELETE_EMPLOYEE":
       return {
         ...state,
-        employees: state.employees.filter(emp => emp.id !== action.payload),
+        employees: state.employees.filter((emp) => emp.id !== action.payload),
       };
-    case 'SET_LEAVE_REQUESTS':
+
+    case "SET_LEAVE_REQUESTS":
       return { ...state, leaveRequests: action.payload };
-    case 'ADD_LEAVE_REQUEST':
-      return { ...state, leaveRequests: [...state.leaveRequests, action.payload] };
-    case 'UPDATE_LEAVE_REQUEST':
+    case "ADD_LEAVE_REQUEST":
       return {
         ...state,
-        leaveRequests: state.leaveRequests.map(req =>
+        leaveRequests: [...state.leaveRequests, action.payload],
+      };
+    case "UPDATE_LEAVE_REQUEST":
+      return {
+        ...state,
+        leaveRequests: state.leaveRequests.map((req) =>
           req.id === action.payload.id ? action.payload : req
         ),
       };
-    case 'SET_DASHBOARD_STATS':
+
+    case "SET_DASHBOARD_STATS":
       return { ...state, dashboardStats: action.payload };
-    case 'SET_PERFORMANCE_REVIEWS':
+
+    // Performance
+    case "SET_PERFORMANCE_REVIEWS":
       return { ...state, performanceReviews: action.payload };
-    case 'ADD_PERFORMANCE_REVIEW':
-      return { ...state, performanceReviews: [...state.performanceReviews, action.payload] };
+    case "ADD_PERFORMANCE_REVIEW":
+      return {
+        ...state,
+        performanceReviews: [...state.performanceReviews, action.payload],
+      };
+
     default:
       return state;
   }
 };
 
-const AppContext = createContext();
+// Avoid StrictMode double init
+let appInitialized = false;
 
 export const useApp = () => {
-  const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useApp must be used within an AppProvider');
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error("useApp must be used within an AppProvider");
+  return ctx;
+};
+
+// Helper: ensure localStorage.employee for EMPLOYEE role
+const ensureEmployeeInLocalStorage = async () => {
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+    if (!user) return;
+
+    // Skip for admin
+    if (user.role && user.role.toUpperCase() === "ADMIN") return;
+
+    // Already present
+    const existing = JSON.parse(localStorage.getItem("employee") || "null");
+    if (existing?.id) return;
+
+    // Try to find employee record by email (fallback to name if needed)
+    if (user.email) {
+      const res = await employeeAPI.search(user.email);
+      const list = res.data || [];
+      // Choose exact email match if available, else first result
+      const match =
+        list.find(
+          (e) => (e.email || "").toLowerCase() === user.email.toLowerCase()
+        ) || list[0];
+
+      if (match) {
+        localStorage.setItem(
+          "employee",
+          JSON.stringify({
+            id: match.id, // DB PK
+            employeeId: match.employeeId, // business id
+            firstName: match.firstName,
+            lastName: match.lastName,
+          })
+        );
+      }
+    }
+  } catch {
+    // ignore
   }
-  return context;
 };
 
 export const AppProvider = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  // ✅ Load initial data - ADD loadDepartments here
   useEffect(() => {
-    loadEmployees();
-    loadLeaveRequests();
-    loadDashboardStats();
-    loadPerformanceReviews();
-    loadDepartments(); // ✅ ADD THIS LINE
+    if (appInitialized) return;
+    // If token present at mount, initialize now.
+    const hasToken = !!localStorage.getItem("token");
+    if (hasToken) {
+      appInitialized = true;
+      (async () => {
+        await ensureEmployeeInLocalStorage(); // <- critical for non-admin
+
+        const user = JSON.parse(localStorage.getItem("user") || "null");
+        const isAdmin = user?.role?.toUpperCase() === "ADMIN";
+
+        // Load only what's needed based on role
+        const promises = [];
+
+        // Only admins need all employees
+        if (isAdmin) {
+          promises.push(loadEmployees());
+        }
+
+        // All users need leave requests (filtered by role in component)
+        promises.push(loadLeaveRequests());
+
+        // All users need dashboard stats
+        promises.push(loadDashboardStats());
+
+        // All users need performance reviews (filtered by role)
+        promises.push(refreshPerformanceReviews());
+
+        // Only admins need departments for management
+        if (isAdmin) {
+          promises.push(loadDepartments());
+        }
+
+        await Promise.all(promises);
+      })();
+      return;
+    }
+
+    // Otherwise listen for an auth:login event so we can initialize when the
+    // user logs in without requiring a full page reload (fixes "reload to see
+    // dashboard after login" issue).
+    const onAuthLogin = () => {
+      if (appInitialized) return;
+      appInitialized = true;
+      (async () => {
+        await ensureEmployeeInLocalStorage();
+
+        const user = JSON.parse(localStorage.getItem("user") || "null");
+        const isAdmin = user?.role?.toUpperCase() === "ADMIN";
+
+        // Load only what's needed based on role
+        const promises = [];
+
+        // Only admins need all employees
+        if (isAdmin) {
+          promises.push(loadEmployees());
+        }
+
+        // All users need leave requests (filtered by role in component)
+        promises.push(loadLeaveRequests());
+
+        // All users need dashboard stats
+        promises.push(loadDashboardStats());
+
+        // All users need performance reviews (filtered by role)
+        promises.push(refreshPerformanceReviews());
+
+        // Only admins need departments for management
+        if (isAdmin) {
+          promises.push(loadDepartments());
+        }
+
+        await Promise.all(promises);
+      })();
+    };
+
+    try {
+      window.addEventListener("auth:login", onAuthLogin);
+    } catch (e) {
+      // ignore (non-browser env)
+    }
+
+    return () => {
+      try {
+        window.removeEventListener("auth:login", onAuthLogin);
+      } catch (e) {
+        // ignore
+      }
+    };
   }, []);
 
-  // Employee functions
+  // Employees
   const loadEmployees = async () => {
-    dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: "SET_LOADING", payload: true });
     try {
       const response = await employeeAPI.getAll();
-      dispatch({ type: 'SET_EMPLOYEES', payload: response.data });
+      dispatch({ type: "SET_EMPLOYEES", payload: response.data });
     } catch (error) {
-      console.error('Failed to load employees:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to load employees' });
+      dispatch({ type: "SET_ERROR", payload: "Failed to load employees" });
     }
   };
 
   const addEmployee = async (employee) => {
     try {
       const response = await employeeAPI.create(employee);
-      dispatch({ type: 'ADD_EMPLOYEE', payload: response.data });
+      dispatch({ type: "ADD_EMPLOYEE", payload: response.data });
       return { success: true };
     } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to add employee' });
-      return { success: false, error: error.response?.data };
+      console.error("addEmployee error", error.response || error);
+      dispatch({ type: "SET_ERROR", payload: "Failed to add employee" });
+      return {
+        success: false,
+        error: error.response?.data || { message: error.message },
+      };
     }
   };
 
   const updateEmployee = async (employee) => {
     try {
       const response = await employeeAPI.update(employee.id, employee);
-      dispatch({ type: 'UPDATE_EMPLOYEE', payload: response.data });
+      dispatch({ type: "UPDATE_EMPLOYEE", payload: response.data });
       return { success: true };
     } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to update employee' });
-      return { success: false, error: error.response?.data };
+      console.error("updateEmployee error", error.response || error);
+      dispatch({ type: "SET_ERROR", payload: "Failed to update employee" });
+      return {
+        success: false,
+        error: error.response?.data || { message: error.message },
+      };
     }
   };
 
   const deleteEmployee = async (id) => {
     try {
       await employeeAPI.delete(id);
-      dispatch({ type: 'DELETE_EMPLOYEE', payload: id });
+      dispatch({ type: "DELETE_EMPLOYEE", payload: id });
       return { success: true };
     } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to delete employee' });
+      dispatch({ type: "SET_ERROR", payload: "Failed to delete employee" });
       return { success: false, error: error.response?.data };
     }
   };
 
-  // Leave functions
+  // Leave
   const loadLeaveRequests = async () => {
     try {
       const response = await leaveAPI.getAll();
-      dispatch({ type: 'SET_LEAVE_REQUESTS', payload: response.data });
-    } catch (error) {
-      console.error('Failed to load leave requests:', error);
+      dispatch({ type: "SET_LEAVE_REQUESTS", payload: response.data });
+    } catch {
+      /* noop */
     }
   };
 
   const addLeaveRequest = async (request) => {
     try {
       const response = await leaveAPI.create(request);
-      dispatch({ type: 'ADD_LEAVE_REQUEST', payload: response.data });
+      dispatch({ type: "ADD_LEAVE_REQUEST", payload: response.data });
       return { success: true };
     } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to add leave request' });
+      dispatch({ type: "SET_ERROR", payload: "Failed to add leave request" });
       return { success: false, error: error.response?.data };
     }
   };
@@ -165,10 +314,13 @@ export const AppProvider = ({ children }) => {
   const updateLeaveRequest = async (request) => {
     try {
       const response = await leaveAPI.update(request.id, request);
-      dispatch({ type: 'UPDATE_LEAVE_REQUEST', payload: response.data });
+      dispatch({ type: "UPDATE_LEAVE_REQUEST", payload: response.data });
       return { success: true };
     } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to update leave request' });
+      dispatch({
+        type: "SET_ERROR",
+        payload: "Failed to update leave request",
+      });
       return { success: false, error: error.response?.data };
     }
   };
@@ -176,10 +328,13 @@ export const AppProvider = ({ children }) => {
   const approveLeaveRequest = async (id) => {
     try {
       const response = await leaveAPI.approve(id);
-      dispatch({ type: 'UPDATE_LEAVE_REQUEST', payload: response.data });
+      dispatch({ type: "UPDATE_LEAVE_REQUEST", payload: response.data });
       return { success: true };
     } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to approve leave request' });
+      dispatch({
+        type: "SET_ERROR",
+        payload: "Failed to approve leave request",
+      });
       return { success: false, error: error.response?.data };
     }
   };
@@ -187,15 +342,18 @@ export const AppProvider = ({ children }) => {
   const rejectLeaveRequest = async (id) => {
     try {
       const response = await leaveAPI.reject(id);
-      dispatch({ type: 'UPDATE_LEAVE_REQUEST', payload: response.data });
+      dispatch({ type: "UPDATE_LEAVE_REQUEST", payload: response.data });
       return { success: true };
     } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to reject leave request' });
+      dispatch({
+        type: "SET_ERROR",
+        payload: "Failed to reject leave request",
+      });
       return { success: false, error: error.response?.data };
     }
   };
 
-  // Attendance functions
+  // Attendance
   const addCheckIn = async (employeeId) => {
     try {
       const response = await attendanceAPI.addCheckIn(employeeId);
@@ -209,98 +367,111 @@ export const AppProvider = ({ children }) => {
   const loadDashboardStats = async () => {
     try {
       const response = await dashboardAPI.getStats();
-      dispatch({ type: 'SET_DASHBOARD_STATS', payload: response.data });
-    } catch (error) {
-      console.error('Failed to load dashboard stats:', error);
+      dispatch({ type: "SET_DASHBOARD_STATS", payload: response.data });
+    } catch {
+      /* noop */
     }
   };
 
-  // Performance functions
-  const loadPerformanceReviews = async () => {
-    try {
-      const response = await performanceAPI.getAll();
-      dispatch({ type: 'SET_PERFORMANCE_REVIEWS', payload: response.data });
-    } catch (error) {
-      console.error('Failed to load performance reviews:', error);
-    }
-  };
-
-  const addPerformanceReview = async (review) => {
-    try {
-      const response = await performanceAPI.create(review);
-      dispatch({ type: 'ADD_PERFORMANCE_REVIEW', payload: response.data });
-      return { success: true };
-    } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to add performance review' });
-      return { success: false, error: error.response?.data };
-    }
-  };
-
-  // ✅ Department functions
+  // Departments
   const loadDepartments = async () => {
     dispatch({ type: "SET_LOADING", payload: true });
     try {
       const response = await departmentAPI.getAll();
-      console.log("Departments loaded:", response.data); // Debug log
       dispatch({ type: "SET_DEPARTMENTS", payload: response.data });
     } catch (error) {
-      console.error("Failed to load departments:", error);
       dispatch({ type: "SET_ERROR", payload: "Failed to load departments" });
     }
   };
 
-  const addDepartment = async (department) => {
+  // inside AppProvider
+  const refreshPerformanceReviews = async () => {
     try {
-      const response = await departmentAPI.create(department);
-      dispatch({ type: "ADD_DEPARTMENT", payload: response.data });
-      return { success: true };
-    } catch (error) {
-      dispatch({ type: "SET_ERROR", payload: "Failed to add department" });
-      return { success: false, error: error.response?.data };
+      const user = JSON.parse(localStorage.getItem("user") || "null");
+      const employee = JSON.parse(localStorage.getItem("employee") || "null");
+
+      if (!user) {
+        dispatch({ type: "SET_PERFORMANCE_REVIEWS", payload: [] });
+        return;
+      }
+
+      if (user.role && user.role.toUpperCase() === "ADMIN") {
+        const res = await performanceAPI.getAll();
+        dispatch({ type: "SET_PERFORMANCE_REVIEWS", payload: res.data || [] });
+      } else if (employee?.employeeId) {
+        // ✅ fetch by business employeeId
+        const res = await performanceAPI.getByEmployee(employee.employeeId);
+        dispatch({ type: "SET_PERFORMANCE_REVIEWS", payload: res.data || [] });
+      } else {
+        dispatch({ type: "SET_PERFORMANCE_REVIEWS", payload: [] });
+      }
+    } catch (err) {
+      console.error(
+        "refreshPerformanceReviews error:",
+        err.response?.status,
+        err.response?.data || err.message
+      );
+      dispatch({ type: "SET_PERFORMANCE_REVIEWS", payload: [] });
     }
   };
 
-  const updateDepartment = async (department) => {
-    try {
-      const response = await departmentAPI.update(department.id, department);
-      dispatch({ type: "UPDATE_DEPARTMENT", payload: response.data });
-      return { success: true };
-    } catch (error) {
-      dispatch({ type: "SET_ERROR", payload: "Failed to update department" });
-      return { success: false, error: error.response?.data };
-    }
+  const addPerformanceReview = async (review) => {
+    const res = await performanceAPI.create(review);
+    await refreshPerformanceReviews();
+    return res;
   };
 
-  const deleteDepartment = async (id) => {
-    try {
-      await departmentAPI.delete(id);
-      dispatch({ type: "DELETE_DEPARTMENT", payload: id });
-      return { success: true };
-    } catch (error) {
-      dispatch({ type: "SET_ERROR", payload: "Failed to delete department" });
-      return { success: false, error: error.response?.data };
-    }
+  const updatePerformanceReview = async (id, review) => {
+    const res = await performanceAPI.update(id, review);
+    await refreshPerformanceReviews();
+    return res;
+  };
+
+  const deletePerformanceReview = async (id) => {
+    const res = await performanceAPI.remove(id);
+    await refreshPerformanceReviews();
+    return res;
   };
 
   const value = {
     ...state,
+    // employees
     addEmployee,
     updateEmployee,
     deleteEmployee,
+    loadEmployees,
+    // leave
     addLeaveRequest,
     updateLeaveRequest,
     approveLeaveRequest,
     rejectLeaveRequest,
-    loadEmployees,
     loadLeaveRequests,
+    // dashboard
     loadDashboardStats,
+    // attendance
     addCheckIn,
-    loadPerformanceReviews,
-    addPerformanceReview,
+    // departments
     loadDepartments,
-    addDepartment,
-    updateDepartment,
-    deleteDepartment,
+    addDepartment: async (d) => {
+      const res = await departmentAPI.create(d);
+      dispatch({ type: "ADD_DEPARTMENT", payload: res.data });
+      return { success: true };
+    },
+    updateDepartment: async (d) => {
+      const res = await departmentAPI.update(d.id, d);
+      dispatch({ type: "UPDATE_DEPARTMENT", payload: res.data });
+      return { success: true };
+    },
+    deleteDepartment: async (id) => {
+      await departmentAPI.delete(id);
+      dispatch({ type: "DELETE_DEPARTMENT", payload: id });
+      return { success: true };
+    },
+    // performance
+    refreshPerformanceReviews,
+    addPerformanceReview,
+    updatePerformanceReview,
+    deletePerformanceReview,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

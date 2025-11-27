@@ -1,222 +1,124 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { authAPI } from "../../services/api";
-import { useApp } from "../../context/AppContext";
 
-const Register = () => {
-  const { departments, employees } = useApp(); // use context to get departments & managers
-
-  const [form, setForm] = useState({
-    first_name: "",
-    last_name: "",
+export default function Register() {
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
     email: "",
+    password: "",
+    roles: "EMPLOYEE",
     phone: "",
-    department_id: "",
+    department: "",
+    employeeId: "",
     position: "",
     salary: "",
-    hire_date: "",
-    manager_id: "",
-    role: "",
-    employee_id: "",
-    password: "",
-    confirmPassword: "",
+    hireDate: "",
+    createdAt: "",
+    updatedAt: "",
   });
 
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [message, setMessage] = useState("");
 
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
-
-    if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
 
     try {
-      await authAPI.register({
-        first_name: form.first_name,
-        last_name: form.last_name,
-        email: form.email,
-        phone: form.phone,
-        department_id: form.department_id,
-        position: form.position,
-        salary: form.salary,
-        hire_date: form.hire_date,
-        manager_id: form.manager_id,
-        role: form.role,
-        employee_id: form.employee_id,
-        password: form.password,
-      });
-      setSuccess("Employee registered successfully!");
-      setForm({
-        first_name: "",
-        last_name: "",
-        email: "",
-        phone: "",
-        department_id: "",
-        position: "",
-        salary: "",
-        hire_date: "",
-        manager_id: "",
-        role: "",
-        employee_id: "",
-        password: "",
-        confirmPassword: "",
-      });
-    } catch (err) {
-      setError(err.response?.data?.message || "Registration failed");
+      const payload = {
+        ...formData,
+        phone: parseInt(formData.phone),
+        employeeId: parseInt(formData.employeeId),
+        salary: parseInt(formData.salary),
+        createdAt: formData.createdAt ? new Date(formData.createdAt) : new Date(),
+        updatedAt: formData.updatedAt ? new Date(formData.updatedAt) : new Date(),
+        hireDate: formData.hireDate || new Date().toISOString().split("T")[0],
+      };
+
+      const response = await authAPI.register(payload);
+      setMessage(response.data.message || "User registered successfully!");
+    } catch (error) {
+      setMessage(error.response?.data?.message || "Registration failed. Try again!");
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded shadow">
-      <h2 className="text-2xl font-bold mb-4">Register Employee</h2>
-      {error && <div className="text-red-500 mb-2">{error}</div>}
-      {success && <div className="text-green-500 mb-2">{success}</div>}
+    <div className="max-w-3xl mx-auto mt-12 bg-white rounded-2xl shadow-xl p-10 border border-gray-100">
 
-      <form onSubmit={handleSubmit} className="space-y-2">
-        <input
-          type="text"
-          name="first_name"
-          placeholder="First Name"
-          value={form.first_name}
-          onChange={handleChange}
-          className="w-full p-2 border rounded"
-          required
-        />
-        <input
-          type="text"
-          name="last_name"
-          placeholder="Last Name"
-          value={form.last_name}
-          onChange={handleChange}
-          className="w-full p-2 border rounded"
-          required
-        />
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={handleChange}
-          className="w-full p-2 border rounded"
-          required
-        />
-        <input
-          type="text"
-          name="phone"
-          placeholder="Phone"
-          value={form.phone}
-          onChange={handleChange}
-          className="w-full p-2 border rounded"
-        />
+      <h2 className="text-3xl font-bold text-gray-900 text-center mb-10">
+        Employee Registration
+      </h2>
 
-        {/* <select
-          name="department_id"
-          value={form.department_id}
-          onChange={handleChange}
-          className="w-full p-2 border rounded"
-          required
-        >
-          <option value="">Select Department</option>
-          {departments.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select> */}
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        <input
-          type="text"
-          name="position"
-          placeholder="Position"
-          value={form.position}
-          onChange={handleChange}
-          className="w-full p-2 border rounded"
-        />
-        <input
-          type="number"
-          name="salary"
-          placeholder="Salary"
-          value={form.salary}
-          onChange={handleChange}
-          className="w-full p-2 border rounded"
-        />
-        <input
-          type="date"
-          name="hire_date"
-          value={form.hire_date}
-          onChange={handleChange}
-          className="w-full p-2 border rounded"
-        />
+        {/* Input =================================== */}
+        {[
+          ["firstName", "First Name", "text"],
+          ["lastName", "Last Name", "text"],
+          ["email", "Email", "email"],
+          ["password", "Password", "password"],
+          ["employeeId", "Employee ID", "number"],
+          ["department", "Department", "text"],
+          ["phone", "Phone Number", "number"],
+          ["position", "Position", "text"],
+          ["salary", "Salary", "number"],
+          ["hireDate", "Hire Date", "date"],
+          ["createdAt", "Created At", "datetime-local"],
+          ["updatedAt", "Updated At", "datetime-local"],
+        ].map(([name, label, type]) => (
+          <div key={name} className="flex flex-col gap-1">
+            <label className="text-gray-700 font-medium">{label}</label>
+            <input
+              type={type}
+              name={name}
+              value={formData[name]}
+              onChange={handleChange}
+              required={name !== "createdAt" && name !== "updatedAt"}
+              className="px-4 py-3 rounded-lg border border-gray-300 bg-gray-50 
+                         focus:bg-white shadow-sm
+                         focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        ))}
 
-        {/* <select
-          name="manager_id"
-          value={form.manager_id}
-          onChange={handleChange}
-          className="w-full p-2 border rounded"
-        >
-          <option value="">Select Manager</option>
-          {employees.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.first_name} {e.last_name}
-            </option>
-          ))}
-        </select> */}
+        {/* Role */}
+        <div className="flex flex-col gap-1">
+          <label className="text-gray-700 font-medium">Role</label>
+          <select
+            name="roles"
+            value={formData.roles}
+            onChange={handleChange}
+            className="px-4 py-3 rounded-lg border border-gray-300 bg-gray-50 
+                       focus:bg-white shadow-sm
+                       focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="EMPLOYEE">Employee</option>
+            <option value="MANAGER">Manager</option>
+            <option value="ADMIN">Admin</option>
+          </select>
+        </div>
 
-        <select
-          name="role"
-          value={form.role}
-          onChange={handleChange}
-          className="w-full p-2 border rounded"
-          required
-        >
-          <option value="">Select Role</option>
-          <option value="admin">Admin</option>
-          <option value="employee">Employee</option>
-        </select>
-
-        <input
-          type="text"
-          name="employee_id"
-          placeholder="Employee ID (optional)"
-          value={form.employee_id}
-          onChange={handleChange}
-          className="w-full p-2 border rounded"
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={handleChange}
-          className="w-full p-2 border rounded"
-          required
-        />
-        <input
-          type="password"
-          name="confirmPassword"
-          placeholder="Confirm Password"
-          value={form.confirmPassword}
-          onChange={handleChange}
-          className="w-full p-2 border rounded"
-          required
-        />
-
+        {/* Button */}
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded"
+          className="col-span-1 md:col-span-2 w-full py-3 mt-4 rounded-xl bg-blue-600 
+            hover:bg-blue-700 text-white font-semibold shadow-lg hover:shadow-xl
+            transition-all"
         >
           Register
         </button>
       </form>
+
+      {message && (
+        <p className="text-center text-green-700 bg-green-50 border border-green-200 
+          p-3 rounded-lg font-medium mt-6">
+          {message}
+        </p>
+      )}
     </div>
   );
-};
-
-export default Register;
+}
